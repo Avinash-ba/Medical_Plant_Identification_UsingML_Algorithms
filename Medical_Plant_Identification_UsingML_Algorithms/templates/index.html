@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medicinal Plant Identification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .file-input {
+            display: none;
+        }
+        .upload-button {
+            background-color: #27ae60;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        .upload-button:hover {
+            background-color: #229954;
+        }
+        .image-preview {
+            max-width: 300px;
+            max-height: 300px;
+            margin: 20px auto;
+            display: none;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+        }
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .prediction-result {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .confidence {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            color: #666;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 2s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .info-section {
+            background-color: #e8f4fd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .plant-info {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌿 Medicinal Plant Identification</h1>
+
+        <div class="info-section">
+            <h3>About This Application</h3>
+            <p>This AI-powered application helps identify medicinal plants from images. Upload a clear photo of a plant leaf or flower, and our machine learning model will analyze it to provide identification results.</p>
+            <p><strong>Supported Plants:</strong> AMLA, BASIL, BLACK PEPPER, CHAMOMILE, CORIANDER, CUMIN, FENNEL, GINGER, LAVENDER, NEEM, OREGANO, PEPPERMINT, ROSEMARY, SAGE, THYME, TULASI, and many more.</p>
+        </div>
+
+        <div class="upload-section">
+            <input type="file" id="fileInput" class="file-input" accept="image/*">
+            <label for="fileInput" class="upload-button">📷 Choose Plant Image</label>
+            <button id="predictBtn" class="upload-button" style="display: none;">🔍 Identify Plant</button>
+            <br>
+            <img id="imagePreview" class="image-preview" alt="Plant image preview">
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing your plant image...</p>
+        </div>
+
+        <div class="result-section" id="resultSection">
+            <div class="prediction-result" id="predictionResult"></div>
+            <div class="confidence" id="confidenceResult"></div>
+            <div class="plant-info" id="plantInfo"></div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const predictBtn = document.getElementById('predictBtn');
+        const imagePreview = document.getElementById('imagePreview');
+        const loading = document.getElementById('loading');
+        const resultSection = document.getElementById('resultSection');
+        const predictionResult = document.getElementById('predictionResult');
+        const confidenceResult = document.getElementById('confidenceResult');
+        const plantInfo = document.getElementById('plantInfo');
+
+        // Plant information database
+        const plantDatabase = {
+            'AMLA': {
+                scientific: 'Phyllanthus emblica',
+                benefits: 'Rich in Vitamin C, antioxidants, supports immunity, digestion, and hair health.',
+                uses: 'Used in Ayurvedic medicine for various health conditions.'
+            },
+            'BASIL': {
+                scientific: 'Ocimum basilicum',
+                benefits: 'Antimicrobial, anti-inflammatory, stress relief, digestion aid.',
+                uses: 'Used in cooking and traditional medicine for respiratory and digestive issues.'
+            },
+            'NEEM': {
+                scientific: 'Azadirachta indica',
+                benefits: 'Antibacterial, antiviral, antifungal, blood purifier.',
+                uses: 'Used in Ayurvedic medicine for skin conditions, immunity, and dental care.'
+            },
+            'GINGER': {
+                scientific: 'Zingiber officinale',
+                benefits: 'Anti-nausea, anti-inflammatory, digestion aid, pain relief.',
+                uses: 'Used for motion sickness, digestion, and inflammatory conditions.'
+            },
+            'TULASI': {
+                scientific: 'Ocimum sanctum',
+                benefits: 'Adaptogenic, anti-stress, immune booster, respiratory health.',
+                uses: 'Sacred in Hinduism, used for stress, immunity, and respiratory issues.'
+            },
+            'TURMERIC': {
+                scientific: 'Curcuma longa',
+                benefits: 'Anti-inflammatory, antioxidant, immune support, joint health.',
+                uses: 'Used in cooking and medicine for inflammation and various health conditions.'
+            },
+            'ALOEVERA': {
+                scientific: 'Aloe barbadensis miller',
+                benefits: 'Skin healing, anti-inflammatory, digestive health, immune support.',
+                uses: 'Used topically for burns and wounds, internally for digestion.'
+            }
+            // Add more plants as needed
+        };
+
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    predictBtn.style.display = 'inline-block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        predictBtn.addEventListener('click', async function() {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select an image first.');
+                return;
+            }
+
+            // Show loading
+            loading.style.display = 'block';
+            resultSection.style.display = 'none';
+            predictBtn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    displayResult(result);
+                } else {
+                    displayError(result.error || 'An error occurred during prediction.');
+                }
+            } catch (error) {
+                displayError('Network error. Please try again.');
+            } finally {
+                loading.style.display = 'none';
+                predictBtn.disabled = false;
+            }
+        });
+
+        function displayResult(result) {
+            resultSection.className = 'result-section success';
+            resultSection.style.display = 'block';
+
+            const plantName = result.prediction.toUpperCase();
+            const confidence = (result.confidence * 100).toFixed(2);
+
+            predictionResult.textContent = `🌱 Identified Plant: ${plantName}`;
+            confidenceResult.textContent = `Confidence: ${confidence}%`;
+
+            // Display plant information
+            const plantInfo = plantDatabase[plantName];
+            if (plantInfo) {
+                plantInfo.innerHTML = `
+                    <h4>Scientific Name: ${plantInfo.scientific}</h4>
+                    <h4>Health Benefits:</h4>
+                    <p>${plantInfo.benefits}</p>
+                    <h4>Traditional Uses:</h4>
+                    <p>${plantInfo.uses}</p>
+                `;
+            } else {
+                plantInfo.innerHTML = `
+                    <p>Plant information not available in our database. This appears to be ${plantName}.</p>
+                `;
+            }
+        }
+
+        function displayError(error) {
+            resultSection.className = 'result-section error';
+            resultSection.style.display = 'block';
+            predictionResult.textContent = '❌ Error';
+            confidenceResult.textContent = error;
+            plantInfo.innerHTML = '';
+        }
+    </script>
+</body>
+</html>
